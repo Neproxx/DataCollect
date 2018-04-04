@@ -12,19 +12,6 @@ import java.util.List;
 public class SqliteDB {
 	
 	private static Connection con;
-	private static boolean hasData = false;
-	
-	public ResultSet displayUsers() throws ClassNotFoundException, SQLException {
-		// Check whether there is a connection and set one up if needed
-		if (con == null) {
-			getConnection();
-		}
-		
-		//work on DB
-		Statement stmt = con.createStatement();
-		ResultSet res = stmt.executeQuery("SELECT fname, lname FROM user");
-		return res;
-	}
 	
 	/**
 	 * Tries to connect to a DB named "PersonalityData.db". If none exists, creates one.
@@ -41,7 +28,6 @@ public class SqliteDB {
 		con = DriverManager.getConnection("jdbc:sqlite:PersonalityData.db");	//may throw SQLException
 	}
 	
-	
 	/**
 	 * Retrieves the names of all tables that are currently stored in the DB
 	 * @return a LinkedList, containing the names of all stored tables. NULL if there are no tables.
@@ -49,27 +35,37 @@ public class SqliteDB {
 	 * @throws SQLException
 	 * @return a List, containing the names of all stored tables as Strings
 	 */
-	public LinkedList<String> getTables() throws ClassNotFoundException, SQLException{
-		if(con==null) {
-			getConnection();
+	public LinkedList<String> getTables(){
+		try {
+			if(con == null)
+				try {
+					getConnection();
+				} catch (ClassNotFoundException | SQLException e1) {
+					System.out.println("Unable to connect to DB, could not retrieve existing tables");
+					return null;
+				}
+			
+			// retrieve names of tables in DB
+			ResultSet res;
+			PreparedStatement stmt = con.prepareStatement("SELECT name FROM sqlite_master WHERE type='table';");
+			res = stmt.executeQuery();
+			
+			// store names of tables in return Array
+			boolean containsData = false;
+			LinkedList<String> tableNames = new LinkedList<String>();
+			while(res.next()) {
+				containsData = true;
+				tableNames.add(res.getString(1));
+			}
+			if(containsData)
+				return tableNames;
+			else
+				return null;
 		}
-		
-		// retrieve names of tables in DB
-		ResultSet res;
-		PreparedStatement stmt = con.prepareStatement("SELECT name FROM sqlite_master WHERE type='table';");
-		res = stmt.executeQuery();
-		
-		// store names of tables in return Array
-		boolean containsData = false;
-		LinkedList<String> tableNames = new LinkedList<String>();
-		while(res.next()) {
-			containsData = true;
-			tableNames.add(res.getString(1));
-		}
-		if(containsData)
-			return tableNames;
-		else
+		catch(SQLException e) {
+			System.out.println("Could not retrieve current Tables");
 			return null;
+		}
 	}
 	
 	/**
@@ -80,9 +76,9 @@ public class SqliteDB {
 	 * @param primary the column that should be used as primary key. Must be one of the names in columnNames
 	 * @return true if queue has been successful, false otherwise
 	 */
-	public boolean addTable(String name, List<String> columnNames, List<String>columnTypes, String primary) {
+	public boolean addTable(String tableName, List<String> columnNames, List<String>columnTypes, String primary) {
 		// check if parameters are valid and try to connect to DB
-		if(name == null || columnNames == null || columnTypes == null) {
+		if(tableName == null || columnNames == null || columnTypes == null) {
 			System.out.println("Error: Invalid Parameters for addTable");
 			return false;
 		}
@@ -90,16 +86,24 @@ public class SqliteDB {
 			System.out.println("Error: Number of Names and Types have to be the same, to addTable!");
 			return false;
 		}
+		//check if connection exists and initiate it if needed
 		if(con == null)
 			try {
 				getConnection();
 			} catch (ClassNotFoundException | SQLException e1) {
-				System.out.println("Unable to connect to DB");
+				System.out.println("Unable to connect to DB, could not add the Table \"" + tableName + "\"");
 				return false;
 			}
 		
-		// build query string and try to execute query
-		String query = String.format("CREATE TABLE %s(", name);
+		// check if Table already exists
+		LinkedList<String> existingTables = getTables();
+		if(existingTables!= null && existingTables.contains(tableName)) {
+			System.out.println("Database already contains Table with name \"" + tableName + "\"");
+			return false;
+		}
+		
+		// build query string
+		String query = String.format("CREATE TABLE %s(", tableName);
 		for(int i = 0; i < columnNames.size(); i++)
 			query += (String.format("%s", columnNames.get(i)) + String.format(" %s, ", columnTypes.get(i)));
 		
@@ -111,102 +115,58 @@ public class SqliteDB {
 		// DEBUG PRINT
 		
 		try {
-			// TODO: check ob PreparedStatement beim preparen einen Error wirft, sodass die execution garnicht
-			// erst probier wird, wodurch auch keine seltsame Tabelle entsteht
-			PreparedStatement stmt = con.prepareStatement("CREATE TABLE name(user VARCHAR(50));");
+			PreparedStatement stmt = con.prepareStatement(query);
 			stmt.executeUpdate();
 			return true;
 		}
 		catch(SQLException e) {
-			System.out.println(String.format("Creation of table %s was not successful:", name));
+			System.out.println(String.format("Creation of table \"%s\" was not successful:", tableName));
 			System.out.println(e.getMessage());
 			// TODO: entferne die seltsame Tabelle, die trotzdem entsteht, selbst wenn CREATE Table fehlschlaegt
-			// Ansatz: suche ob tabelle mit dem namen existiert und loesche sie FALLS keine Eintraege drin
-			// ansonsten loeschen wir vielleicht eine, die schon laenger existierte
+			// Aber unter welchen Umstaenden passiert das?
+			return false;
+		}
+	}
+
+
+	/**
+	 * adds and Entry (row) into the specified table
+	 * @param tableName Name of the table to be inserted into
+	 * @param values a List of Values, that ist to be inserted as one row into the table
+	 * @return true if successful, false otherwise
+	 */
+	public boolean addEntry(String tableName, List<Object> values){
+		if(con == null)
+			try {
+				getConnection();
+			} catch (ClassNotFoundException | SQLException e1) {
+				System.out.println("Unable to connect to DB, could not add the Entry into table \"" + tableName + "\"");
+				return false;
+			}
+		
+		// build query string
+		String query = String.format("INSERT INTO %s VALUES(", tableName);
+		for(int i = 0; i < values.size() - 1; i++)
+			query += "?,";
+		query += "?);";
+		
+		try {
+			//execute Update
+			PreparedStatement stmt = con.prepareStatement(query);
+			for(int i=0; i<values.size(); i++)
+				stmt.setObject(i+1, values.get(i));
+			stmt.executeUpdate();
+			return true;
+		}
+		catch(SQLException e) {
+			// Print which Entry has not been added
+			System.out.println("Could not add Entry into table \"" + tableName + "\"");
+			System.out.println("Unadded Entry:");
+			System.out.print("(");
+			for(int i=0; i < values.size() - 1; i++)
+				System.out.print(values.get(i) + ", ");
+			System.out.println(values.get(values.size()-1) + ")");
 			return false;
 		}
 	}
 }
-
-	/*
-	public void addUser(String fName, String lName) throws ClassNotFoundException, SQLException {
-		
-		if(con == null) {
-			getConnection();
-		}
-		
-		PreparedStatement stmt = con.prepareStatement("INSERT INTO user VALUES(?,?,?);");
-		stmt.setString(2, fName);
-		stmt.setString(3, lName);
-		stmt.execute();
-	}
-	*/
-
-/* old
-  	public ResultSet displayUsers() throws ClassNotFoundException, SQLException {
-		// Check whether there is a connection and set one up if needed
-		if (con == null) {
-			getConnection();
-		}
-		
-		//work on DB
-		Statement stmt = con.createStatement();
-		ResultSet res = stmt.executeQuery("SELECT fname, lname FROM user");
-		return res;
-	}
-	
-	private void getConnection() throws ClassNotFoundException, SQLException {
-		// JDBC = Java Database Connectivity - a standard to provide an interface to connect java to relational DBs
-		// Different versions are possible
-		// this is the standard way to load a JDBC driver, it registers in DriverManagar
-		Class.forName("org.sqlite.JDBC"); 										//may throw ClassNotFoundException
-		
-		// Since jdbc is now registered at DriverManager, we can establish a connection
-		con = DriverManager.getConnection("jdbc:sqlite:PersonalityData.db");	//may throw SQLException
-		initalise();
-	}
-
-	// TO-DO: ask for name of the person track data
-	private void initalise() throws SQLException {
-		if(!hasData) {
-			hasData = true;
-			Statement stmt = con.createStatement();
-			
-			// sqlite_master ist die master table in jeder SQL DB und speichert Daten ueber alle anderen Tabellen
-			// was wir hier also checken ist, ob es eine 'table' mit Namen 'user' bereits gibt, die wir verwenden koennen
-			ResultSet res = stmt.executeQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='user';");
-			
-			if(!res.next()) {
-				// Das ResultSet ist leer und wir muessen eine Tabelle erstellen
-				System.out.println("Building User Table with prepopulated values.");
-				
-				// It almost always is better to use prepared Statements!
-				PreparedStatement create_stmt = con.prepareStatement("CREATE TABLE user(id INTEGER, fName VARCHAR(60), lName VARCHAR(60), PRIMARY KEY(id));");
-				// when updating the table, executeUpdate() instead of executeStatement() must be used
-				create_stmt.executeUpdate();
-				
-				// fuege Daten ein
-				PreparedStatement prepStmt = con.prepareStatement("INSERT INTO user VALUES(?,?,?);");
-				prepStmt.setString(2, "Marcel");
-				prepStmt.setString(3, "Juschak");
-				prepStmt.execute();
-				
-			}
-			else {
-				System.out.println("user table already exists!");
-			}
-		}
-	}
-	
-	public void addUser(String fName, String lName) throws ClassNotFoundException, SQLException {
-		
-		if(con == null) {
-			getConnection();
-		}
-		
-		PreparedStatement stmt = con.prepareStatement("INSERT INTO user VALUES(?,?,?);");
-		stmt.setString(2, fName);
-		stmt.setString(3, lName);
-		stmt.execute();
-	}
-*/

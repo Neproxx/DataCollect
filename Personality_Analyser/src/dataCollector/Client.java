@@ -18,44 +18,48 @@ public class Client {
 		
 		SqliteDB db = new SqliteDB();
 		
-		LinkedList<String> names = db.getTables();
-		if(names!=null) {
+		LinkedList<String> existingTables = db.getTables();
+		if(existingTables != null) {
 			System.out.println("Currently stored tables:");
-			for(int i=0; i<names.size(); i++) {
-				System.out.println(names.get(i));
+			for(int i=0; i<existingTables.size(); i++) {
+				System.out.println(existingTables.get(i));
 			}
 		}
 		else
 			System.out.println("No currently stored tables!");
+		System.out.println("=================");
 		
+		/*
+		// add a table for testing
 		LinkedList<String> colNames = new LinkedList<String>(Arrays.asList("krank", "muede", "schmerzen"));
 		LinkedList<String> colTypes = new LinkedList<String>(Arrays.asList("VARCHAR(60)", "INTEGER", "REAL"));
-		boolean success = db.addTable("daily", colNames, colTypes, "krank");
+		boolean success = db.addTable("test", colNames, colTypes, "krank");
 		if(success)
 			System.out.println("Table was successfully created!");
 
-		names = db.getTables();
-		if(names!=null) {
+		// check again what tables are stored
+		existingTables = db.getTables();
+		if(existingTables!=null) {
 			System.out.println("Currently stored tables:");
-			for(int i=0; i<names.size(); i++) {
-				System.out.println(names.get(i));
+			for(int i=0; i<existingTables.size(); i++) {
+				System.out.println(existingTables.get(i));
 			}
 		}
 		else
 			System.out.println("No currently stored tables!");
 		
 		
-		/*
-		try {
-			res = db.displayUsers();
-			
-			while(res.next()) {
-				// ResultSet liefert interface um die Werte aus bestimmten Spalten der aktuellen Reihe zu bekommen
-				System.out.println(res.getString("fName") + " " + res.getString("lName"));
-			}
-		} catch (ClassNotFoundException | SQLException e) {
-			System.out.println(e.getMessage());
-		}
+		// try to add some Entries
+		LinkedList<Object> data1 = new LinkedList<>(); data1.add("a"); data1.add(1); data1.add(1.5);
+		LinkedList<Object> data2 = new LinkedList<>(); data2.add("nein"); data2.add(100); data2.add(99.5);
+		LinkedList<Object> data3 = new LinkedList<>(); data3.add("ieLLEicht"); data3.add(5999); data3.add(1.3421);
+		
+		db.addEntry("wrong", data1);
+		db.addEntry("wrong", data2);
+		db.addEntry("wrong", data3);
+		
 		*/
+		
+		
 	}
 }
