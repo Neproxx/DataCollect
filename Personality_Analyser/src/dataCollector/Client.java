@@ -20,52 +20,119 @@ import java.io.BufferedReader;
  * 
  */
 
+/**
+ * This Class communicates with the user by printing possible commands to the console
+ * and calls other classes and functions according to the user input.
+ * @author Neprox
+ *
+ */
 public class Client {
 	
-	public static void main(String[] args) throws ClassNotFoundException, SQLException {
-		// TODO: Init von Options in eigene Funktion auslagern?
-		OptionGroup option = new OptionGroup();
-		Option opt1 = new Option("t", "tables", false, "list all currently stored tables and their Descriptions");
-		Option opt2 = new Option("iI", "insertInto", true, "add Entries to table with name \"tableName\"");
-		Option opt3 = new Option("cT", "createTable", true, "create a new Table with the given Name");
-		Option opt4 = new Option("h", "help", false, "list all possible Commands");		// TODO: realize this with helper function
-		option.addOption(opt1); option.addOption(opt2); option.addOption(opt3); option.addOption(opt4);
-		// TODO: add option
-		System.out.println("Hello User!");
-		System.out.println("Please choose what you want to do:");
+	/** the Parser used to dissect the user's commands */
+	DefaultParser parser;
+	
+	/** used to print possible Commands to the user */
+	HelpFormatter formatter;
+	
+	/** Options (commands) that are available to the user */
+	Options options;
+	
+	/** the BufferedReader uses to read from the console */
+	BufferedReader in;
+	
+	/** the SQLite DB that is used for storing and retrieving data */
+	SqliteDB db;
+	/**
+	 * 
+	 */
+	public Client() {
+		// initialize Options for the parser
+		OptionGroup mutualExclusiveOpts = new OptionGroup();
+		Option tables = new Option("t", "tables", false, "list all currently stored tables and their Descriptions");
+		Option insertInto = new Option("i", "insertInto", true, "add Entries to the specified table");
+		Option createTable = new Option("c", "createTable", true, "create a new Table with the specified Name");
+		Option help = new Option("h", "help", false, "list all possible Commands");
+		createTable.setArgName("Tablename");
+		insertInto.setArgName("Tablename");
+		mutualExclusiveOpts.addOption(help);
+		mutualExclusiveOpts.addOption(insertInto);
+		mutualExclusiveOpts.addOption(createTable);
+		mutualExclusiveOpts.addOption(tables);
 		
-		// TODO: print all possible Commands
+		// initialize fields
+		this.options = new Options();
+		this.options.addOptionGroup(mutualExclusiveOpts);
+		this.parser = new DefaultParser();
+		this.formatter = new HelpFormatter();
+		this.in = new BufferedReader(new InputStreamReader(System.in));
+		this.db = new SqliteDB();
+	}
+	
+	public void processInput() {
+		System.out.println();
+		System.out.println("Please choose what you want to do next. Enter \"-h\" to display possible commands.");
 		
-		// Read things and respond accordingly
-		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-		DefaultParser parser = new DefaultParser();
-		
-		while(true) {
-			try {
-				String input = in.readLine();
-				String[] userInput = input.split(" ");
-				//CommandLine cmd = parser.parse(option, userInput);
-			} catch (IOException e) {
-				System.out.println("Error when trying to read Input:");
-				e.printStackTrace();
+		try {
+			// read input
+			String input = in.readLine();
+			
+			// convert into array and parse
+			String[] inputArr = input.split(" ");
+			CommandLine cmds = parser.parse(options, inputArr);
+			
+			// process user's commands
+			if(cmds.hasOption("help"))
+				formatter.printHelp("You can pick one command (starting with \"-\" or \"--\") and need to specify the additional argument if needed", options);
+			else if(cmds.hasOption("tables"))
+				db.printUserTables();
+			else if(cmds.hasOption("createTable"))
+				createTable();
+			else if(cmds.hasOption("insertInto")) 
+				insertIntoTable();
+			
 				
-			}
+			
+		} catch (IOException e) {
+			System.err.println("ERROR when trying to read input:");
+			e.printStackTrace();
+			this.processInput();
+		} catch (ParseException e) {
+			System.err.println("ERROR - could not parse the input. Reason:");
+			System.err.println(e.getMessage());
+			System.out.println();
+			System.out.println("Please try again:");
+			this.processInput();
 		}
+		this.processInput();
+		
+	}
+	// TODO: implement Routine for creating a table from console
+	private boolean createTable() {
+		// TODO: Parser nebenbei auch auf diesem Input laufen lassen und schauen ob die cancel flag gesetzt ist und gegebenfalls abbrechen
+		System.out.println("TODO: instructions");
+		System.out.println("Enter \"--cancel\" or \"-c\" to select another option");
+		System.out.println("createTable Method in Client not implemented");
+		return false;
+	}
+	
+	// TODO: implement Routine for inserting Data into a table from console
+	private boolean insertIntoTable() {
+		System.out.println("TODO: instructions");
+		System.out.println("Enter \"--cancel\" or \"-c\" to select another option");
+		System.out.println("Enter \"--help\" or \"-h\" to display the required format of your input");
+		System.out.println("insertIntoTable Method in Client not implemented");
+		System.out.flush();
+		return false;
+	}
+	
+	public static void main(String[] args) throws ClassNotFoundException, SQLException {
+		
+		System.out.println("Hello User!");
+		Client cli = new Client();
+		cli.processInput();
 		
 		
-		SqliteDB db = new SqliteDB();
-		
-		LinkedList<String> existingTables = db.getTables();
-		if(existingTables != null) {
-			System.out.println("Currently stored tables:");
-			for(int i=0; i<existingTables.size(); i++) {
-				System.out.println(existingTables.get(i));
-			}
-		}
-		else
-			System.out.println("No currently stored tables!");
-		System.out.println("=================");
-		
+		/*
 		
 		// add a table for testing
 		LinkedList<String> colNames = new LinkedList<String>(Arrays.asList("krank", "muede", "schmerzen"));
@@ -94,9 +161,6 @@ public class Client {
 		db.addEntry("wrong", data1);
 		db.addEntry("wrong", data2);
 		db.addEntry("wrong", data3);
-		
-		
-		
-		
+		*/
 	}
 }

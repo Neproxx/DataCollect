@@ -69,6 +69,21 @@ public class SqliteDB {
 	}
 	
 	/**
+	 * prints the tables stored in the DB, that the user uses to store data, i.e. excluding tables for internal administration/metadata
+	 */
+	public void printUserTables() {
+		LinkedList<String> tables = this.getTables();
+		if(tables!=null) {
+			System.out.println("Currently stored tables are:");
+			for(int i=0; i<tables.size(); i++) {
+				System.out.println("\"" + tables.get(i) + "\"");
+			}
+		}
+		else
+			System.out.println("Currently there are no stored tables.");
+	}
+	
+	/**
 	 * Creates a new table in the DB. Entry at index i of columnNames and columnTypes belong together
 	 * @param name name of the table
 	 * @param columnNames list of names for the columns. The size of this list equals the amount of columns
