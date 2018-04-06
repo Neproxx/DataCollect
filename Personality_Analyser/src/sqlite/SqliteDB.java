@@ -9,6 +9,8 @@ import java.sql.Statement;
 import java.util.LinkedList;
 import java.util.List;
 
+import dataTypes.Pair;
+
 public class SqliteDB {
 	
 	private static Connection con;
@@ -91,14 +93,10 @@ public class SqliteDB {
 	 * @param primary the column that should be used as primary key. Must be one of the names in columnNames
 	 * @return true if queue has been successful, false otherwise
 	 */
-	public boolean addTable(String tableName, List<String> columnNames, List<String>columnTypes, String primary) {
+	public boolean addTable(String tableName, List<Pair<String, String>> columnDefinitions, String primary) {
 		// check if parameters are valid and try to connect to DB
-		if(tableName == null || columnNames == null || columnTypes == null) {
+		if(tableName == null || columnDefinitions == null) {
 			System.out.println("Error: Invalid Parameters for addTable");
-			return false;
-		}
-		else if(columnNames.size() != columnTypes.size()) {
-			System.out.println("Error: Number of Names and Types have to be the same, to addTable!");
 			return false;
 		}
 		//check if connection exists and initiate it if needed
@@ -119,8 +117,8 @@ public class SqliteDB {
 		
 		// build query string
 		String query = String.format("CREATE TABLE %s(", tableName);
-		for(int i = 0; i < columnNames.size(); i++)
-			query += (String.format("%s", columnNames.get(i)) + String.format(" %s, ", columnTypes.get(i)));
+		for(int i = 0; i < columnDefinitions.size(); i++)
+			query += (String.format("%s", columnDefinitions.get(i).getKey()) + String.format(" %s, ", columnDefinitions.get(i).getValue()));
 		
 		query += String.format("PRIMARY KEY(%s));", primary);
 		
@@ -137,10 +135,23 @@ public class SqliteDB {
 		catch(SQLException e) {
 			System.out.println(String.format("Creation of table \"%s\" was not successful:", tableName));
 			System.out.println(e.getMessage());
-			// TODO: entferne die seltsame Tabelle, die trotzdem entsteht, selbst wenn CREATE Table fehlschlaegt
-			// Aber unter welchen Umstaenden passiert das?
 			return false;
 		}
+	}
+	
+	/**
+	 * states whether a table with the given name already exists in the Database
+	 * @param tableName
+	 * @return true if Database contains table with the given name
+	 */
+	public boolean exists(String tableName) {
+		LinkedList<String> tables = getTables();
+		if(tables==null)
+			return false;
+		if(tables.contains(tableName))
+			return true;
+		else
+			return false;
 	}
 
 
