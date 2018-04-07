@@ -165,11 +165,18 @@ public class Client {
 			}
 			// Invoke SQL CREATE TABLE Query
 			else if(cmds.hasOption("done")) {
-				if(primaries.size()==0) {
-					// TODO: create default_ID as Primary and store counter in table for metadata
+				// choose the correct primary
+				boolean default_primary = true;
+				String primary = "ID";
+				if(primaries.size() > 0) {
+					// if Primary values have been given -> use them instead of default
+					default_primary = false;
+					primary = primaries.get(1);
+					for(int i=1; i<primaries.size(); i++)
+						primary += ", " + primaries.get(i);
 				}
 				if(columns.size() != 0) {
-					// TODO: Add table + Metadata
+					db.addTable(tableName, columns, primary, true, default_primary);
 				}
 				else
 					System.out.println("You need to specify a column, before finishing.");
@@ -229,7 +236,7 @@ public class Client {
 				String leftAlignFormat = "| %-20s | %-11s | %-7s |%n";
 
 				System.out.format("+----------------------+-------------+---------+%n");
-				System.out.format("| Column name          | Type        | Primary +%n");
+				System.out.format("| Column name          | Type        | Primary |%n");
 				System.out.format("+----------------------+-------------+---------+%n");
 				for (int i = 0; i < columns.size(); i++) {
 				    System.out.format(leftAlignFormat, columns.get(i).getKey(), columns.get(i).getValue(), primaries.contains(columns.get(i).getKey()) ? "yes" : "no");

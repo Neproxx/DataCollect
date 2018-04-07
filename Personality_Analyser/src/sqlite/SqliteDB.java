@@ -91,9 +91,11 @@ public class SqliteDB {
 	 * @param columnNames list of names for the columns. The size of this list equals the amount of columns
 	 * @param columnTypes ist of types for the columns. Must be the same size as columNames
 	 * @param primary the column that should be used as primary key. Must be one of the names in columnNames
+	 * @param userTable specifies whether this table should be a userTable, i.e. needs extra metadata
+	 * @param defaultPrimary true if the default Primary, i.e. "ID" is chosen. The primary will be updated internally without awareness of the user.
 	 * @return true if queue has been successful, false otherwise
 	 */
-	public boolean addTable(String tableName, List<Pair<String, String>> columnDefinitions, String primary) {
+	public boolean addTable(String tableName, List<Pair<String, String>> columnDefinitions, String primary, boolean userTable, boolean defaultPrimary) {
 		// check if parameters are valid and try to connect to DB
 		if(tableName == null || columnDefinitions == null) {
 			System.out.println("Error: Invalid Parameters for addTable");
@@ -126,6 +128,8 @@ public class SqliteDB {
 		System.out.println("QUERY to be executed: ");
 		System.out.println(query);
 		// DEBUG PRINT
+		
+		// TODO: add metadata to metadata table
 		
 		try {
 			PreparedStatement stmt = con.prepareStatement(query);
