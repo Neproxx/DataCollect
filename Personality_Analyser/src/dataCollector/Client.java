@@ -63,9 +63,10 @@ public class Client {
 	}
 	
 	/**
-	 * reads input from the console with the given options and returns a CommandLine Object, that can be used to retrieve the options
-	 * @param options the options, that should be parsed
-	 * @return a CommandLine Object. NULL if there is an exception.
+	 * reads input from the console with the given options and returns a CommandLine Object, that can be used to retrieve the options.
+	 * Returns <strong>null</strong> if there was an error.
+	 * @param options the options, that should be parsed.
+	 * @return a CommandLine Object. null if there is an exception.
 	 */
 	private CommandLine readInput(Options options) {
 		try {
@@ -133,14 +134,19 @@ public class Client {
 		}
 		
 	}
-	// TODO: implement Routine for creating a table from console
+	/**
+	 * reads input from the user in order to create a new table and insert it into the database
+	 * @param tableName the name of the table that should be created
+	 * @return true if table was created and inserted into database, false otherwise
+	 */
 	private boolean createTable(String tableName) {
 		System.out.println("");
 		System.out.println("Please enter the Definition of each column one by one. Enter -h for more details and/or help");
 		
 		// Stores Pairs of <ColumnName, Datatype>
 		LinkedList<Pair<String,String>> columns = new LinkedList<>();
-		LinkedList<Pair<String,String>> primaries = new LinkedList<>();
+		// Stores Columnnames
+		LinkedList<String> primaries = new LinkedList<>();
 		
 		while(true) {
 			// read and process input
@@ -178,10 +184,9 @@ public class Client {
 					System.out.println("Wrong number of arguments: " + input.length + ", required number of arguments: 2");
 					continue;
 				}
-				// give names for better understandability
+				// give names for better readability
 				String name = input[0];
 				String type = input[1];
-				
 				// give Feedback to the user
 				System.out.println("You have entered Column_Name = " + name + ", Type = " + type);
 				
@@ -197,7 +202,7 @@ public class Client {
 					continue;
 				}
 				
-				// add Column definition to the list. If text was specified as type -> convert syntax to something, that SQL can understand
+				// convert input types to SQL types and add column to the list of columns
 				type = type.equals("text") ? "VARCHAR(50)" : type.equals("integer")? "INTEGER" : "REAL";
 				Pair<String, String> column = new Pair<>(name, type);
 				columns.add(column);
@@ -205,19 +210,31 @@ public class Client {
 			
 			// add an already existing column to the primary
 			else if(cmds.hasOption("add_Primary")) {
-				// TODO
-			}
-			else if(cmds.hasOption("added_Columns")) {
-				System.out.println("You have entered the following columns:"); // Table layout on console!
-				String leftAlignFormat = "| %-20s | %-11s |%n";
-
-				System.out.format("+----------------------+-------------+%n");
-				System.out.format("| Column name          | Type        |%n");
-				System.out.format("+----------------------+-------------+%n");
-				for (int i = 0; i < columns.size(); i++) {
-				    System.out.format(leftAlignFormat, columns.get(i).getKey(), columns.get(i).getValue());
+				String primary = cmds.getOptionValue("add_Primary");
+				// check whether user has already entered the corresponding column -> find column with columnName == primary
+				boolean defined = false;
+				for(int i=0; i<columns.size(); i++)
+					if(columns.get(i).getKey().equals(primary))
+						defined = true;
+				if(!defined) {
+					System.out.println("Column " + primary + " has to be defined first!");
+					System.out.println("try: --add " + primary + " < + " + primary + "_type>");
+					continue;
 				}
-				System.out.format("+----------------------+-------------+%n");
+				primaries.add(primary);
+				System.out.println("\"" + primary + "\" was added as Primary");
+			}
+			else if(cmds.hasOption("display_Columns")) {
+				System.out.println("You have entered the following columns:"); // Table layout on console!
+				String leftAlignFormat = "| %-20s | %-11s | %-7s |%n";
+
+				System.out.format("+----------------------+-------------+---------+%n");
+				System.out.format("| Column name          | Type        | Primary +%n");
+				System.out.format("+----------------------+-------------+---------+%n");
+				for (int i = 0; i < columns.size(); i++) {
+				    System.out.format(leftAlignFormat, columns.get(i).getKey(), columns.get(i).getValue(), primaries.contains(columns.get(i).getKey()) ? "yes" : "no");
+				}
+				System.out.format("+----------------------+-------------+---------+%n");
 			}
 			else
 				System.out.println("No Command recognized, please try again");
@@ -277,7 +294,7 @@ public class Client {
 										"multiple ones can be specified though. The primary key is used to uniquely distinguish each entry from others. " +
 										"If you want to store data per day, the attribute \"day\" would be unique for every entry and would therefore be the primary " + 
 										"If no value is specified, a numeric ID is automatically created for each entry");
-		Option addedCols = new Option("aC", "added_Columns", false, "displays all Columndefinitions that you have entered already. Columns with type \"text\" " + 
+		Option addedCols = new Option("dC", "display_Columns", false, "displays all Column definitions that you have entered already. Columns with type \"text\" " + 
 										"internally have the type \"VARCHAR(50)\", so there is no problem, if you see this");
 		Option addCol = new Option("a", "add", true, "adds a column with the given Name and Type. Type can either be \"integer\", \"real\" or \"text\"");
 		addCol.setArgs(2);
